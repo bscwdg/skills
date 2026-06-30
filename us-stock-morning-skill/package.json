@@ -1,0 +1,9 @@
+{
+  "name": "us-stock-morning-skill",
+  "version": "1.0.0",
+  "description": "每日美股宏观大盘与板块强弱智能分析工具",
+  "main": "scripts/seedance-wrapper.js",
+  "dependencies": {},
+  "author": "OpenClaw User",
+  "license": "ISC"
+}
