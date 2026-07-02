@@ -1,0 +1,4 @@
+interface:
+  display_name: "A 股市场复盘"
+  short_description: "生成中文 A 股午间和收盘复盘。"
+  default_prompt: "Use $a-share-market-review-skill 生成今天的 A 股午间或收盘复盘。"

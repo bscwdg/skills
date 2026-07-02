@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codex 技能构建器"
+  short_description: "创建、审查和优化 Codex Skills。"
+  default_prompt: "Use $codex-skill-builder 设计并验证一个新的 Codex Skill。"

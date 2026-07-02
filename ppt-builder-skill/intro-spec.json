@@ -1,0 +1,111 @@
+{
+  "title": "ppt-builder-skill",
+  "subtitle": "从主题到 .pptx 的自动化技能",
+  "author": "skill 工作区",
+  "theme": "default",
+  "slides": [
+    {
+      "layout": "title",
+      "title": "ppt-builder-skill",
+      "subtitle": "从主题到 .pptx 的自动化技能 · 第四个 skill",
+      "author": "skill 工作区"
+    },
+    { "layout": "section", "title": "一、它解决什么" },
+    {
+      "layout": "bullets",
+      "title": "核心能力",
+      "bullets": [
+        "生成原生 .pptx（PowerPoint / WPS / Keynote 通用）",
+        "三段式 workflow：主题 → 确认大纲 → 生成",
+        "5 种布局覆盖常见幻灯片形态",
+        "3 套预设主题一键切换",
+        { "text": "纯 Node + pptxgenjs，不依赖本机 Office", "level": 1 }
+      ],
+      "notes": "强调产物是真正的 .pptx 文件，而非图片或网页。"
+    },
+    {
+      "layout": "bullets",
+      "title": "适用场景",
+      "bullets": [
+        "“帮我做一个 PPT”",
+        "把已有大纲快速转成演示文稿",
+        "汇报 / 培训 / 分享幻灯片出稿",
+        { "text": "也可作为其他 skill 的可视化输出端", "level": 1 }
+      ]
+    },
+    {
+      "layout": "two-column",
+      "title": "工作流程",
+      "columns": [
+        [
+          "明确需求（主题/受众/页数/语言/主题风格）",
+          "生成大纲并请用户确认",
+          "确认后写 JSON spec 文件",
+          "运行脚本生成 .pptx",
+          "报告输出路径"
+        ],
+        [
+          "产出：参数清单",
+          "产出：可改的大纲",
+          "产出：spec.json",
+          "产出：output.pptx",
+          "产出：可在 Office 打开"
+        ]
+      ],
+      "notes": "中段有一次用户确认交互，保证内容可控。"
+    },
+    {
+      "layout": "bullets",
+      "title": "五种布局",
+      "bullets": [
+        "title — 标题页（大标题 + 副标题 + 作者）",
+        "bullets — 项目符号页（支持二级缩进）",
+        "section — 章节分隔页",
+        "two-column — 双栏对照页",
+        "quote — 引用页（引文 + 出处）"
+      ]
+    },
+    {
+      "layout": "two-column",
+      "title": "三套主题",
+      "columns": [
+        [
+          "default — 白底深蓝，蓝色强调",
+          "dark — 深灰底白字，青蓝强调",
+          "corporate — 浅灰底深灰，橙色强调"
+        ],
+        [
+          "适用：通用、商务汇报",
+          "适用：科技、发布会暗光环境",
+          "适用：企业内训、品牌风"
+        ]
+      ]
+    },
+    {
+      "layout": "quote",
+      "quote": "大纲先确认，内容再落地。",
+      "author": "workflow 设计原则"
+    },
+    { "layout": "section", "title": "二、如何使用" },
+    {
+      "layout": "bullets",
+      "title": "三步上手",
+      "bullets": [
+        "npm install（首次使用，安装 pptxgenjs）",
+        "按 references/slide-spec.md 写 JSON spec",
+        "node build_pptx.js spec.json -o output.pptx"
+      ],
+      "notes": "spec schema、布局字段与示例都在 references/slide-spec.md。"
+    },
+    {
+      "layout": "bullets",
+      "title": "输出规则",
+      "bullets": [
+        "不编造数据，内容来自用户主题与确认的大纲",
+        "单页要点 ≤6 条，单条 ≤30 字",
+        "用 section 页把内容分成 3–5 段",
+        { "text": "演讲者的话放 notes，不显示在正片", "level": 1 }
+      ]
+    }
+  ]
+}

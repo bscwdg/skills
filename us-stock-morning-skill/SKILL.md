@@ -1,64 +1,79 @@
 ---
 name: us-stock-morning-skill
-description: 每日美股开盘前/收盘后的宏观大盘分析，包含三大指数、行业核心 ETF 强弱及财经热点总结。
+description: 生成中文美股开盘前早报或收盘后复盘，覆盖美股主要指数、行业 ETF 强弱和宏观新闻背景。用户要求美股早报、美股开盘前分析、收盘复盘、三大指数解读、sector ETF rotation 或 US stock market briefing 时使用。
 ---
 
-# 交互与执行指令
+# US Stock Morning Skill
 
-当用户触发相关提示词时，请大模型严格按照以下步骤执行：
+Use this skill to produce a professional Chinese market briefing for US stocks before the open or after the close.
 
-### 1. 执行脚本获取多维市场数据
-运行原生 JS 脚本获取标准的三大指数与核心板块数据。
-* **Windows (CMD) 环境执行：**
-  ```cmd
-  node "%SKILL_DIR%\scripts\seedance.js"
-  ```
-* **Linux / Mac 环境执行：**
-  ```bash
-  node "$SKILL_DIR/scripts/seedance.js"
-  ```
-> **大模型注意：** 读取脚本返回的 `market_indices` 提取大盘指数点位，利用 `strong_sectors` 和 `weak_sectors` 获取主流核心行业（如科技、能源、消费）的轮动数据。
+## Workflow
 
----
+1. Run the bundled market data script to collect major index and sector ETF data:
 
-### 2. 结合实时网络搜索与逻辑推演 (逻辑层)
-1. 请尝试使用 **`web_search`** 工具搜索最新的美股宏观消息（关键词：`US stock market news today`）。
-2. **⚠️ 弹性处理机制：** 如果当前环境提示 `web_search` 不可用，或搜索返回 403/无结果，则使用 **`byted_web_search`** 工具或者请大模型直接根据步骤 1 拿到的三大指数涨跌（如纳指强、道指弱）和核心行业分类标签（如【科技】领涨，【防守】领跌）进行**宏观资金偏好逻辑推演**。
+   ```bash
+   node "$SKILL_DIR/scripts/seedance.js"
+   ```
 
----
+   On Windows CMD, use:
 
-### 3. 生成早报报告 (表现层)
-请严格按照以下 Markdown 结构排版并输出（保持专业、洗练的分析师口吻）：
+   ```cmd
+   node "%SKILL_DIR%\scripts\seedance.js"
+   ```
+
+2. Parse the JSON output:
+   - Use `market_indices` for Nasdaq Composite, S&P 500, and Dow Jones Industrial Average performance.
+   - Use `strong_sectors` for the strongest sector or thematic ETFs.
+   - Use `weak_sectors` for the weakest sector or thematic ETFs.
+   - Treat `change_pct` as percentage change and `close` as the latest point or price.
+
+3. Add current market context when available:
+   - Prefer available web/search tools for fresh macro headlines, earnings news, Fed/rate expectations, oil, yields, dollar, or geopolitical catalysts.
+   - If search is unavailable or blocked, infer cautiously from index divergence and sector rotation in the script output.
+   - Clearly avoid inventing specific news events that were not observed.
+
+4. Write the final answer in Chinese with a professional, concise analyst tone.
+
+## Report Template
 
 ```markdown
-📅 **美股早报 | [自动填入当前日期]**
+📅 **美股早报 | [当前日期]**
 ---
 
 📊 **大盘指数表现**
-* 🏛️ **纳斯达克**：`点位` (`涨跌幅%`)
-* 📈 **标普500**：`点位` (`涨跌幅%`)
-* 📉 **道琼斯**：`点位` (`涨跌幅%`)
-*[基于以上指数表现，一句话总结大盘今日整体多空情绪]*
+* 🟢/🔴 **纳斯达克综合指数**：`点位`（`涨跌幅%`）
+* 🟢/🔴 **标普 500 指数**：`点位`（`涨跌幅%`）
+* 🟢/🔴 **道琼斯工业平均指数**：`点位`（`涨跌幅%`）
+
+[基于三大指数表现，用一句话概括市场风险偏好、成长/价值风格或多空情绪。]
 
 🔥 **主流行业核心 ETF 热力图**
-* 🟢 **强势板块 (Top Gainers)：**
-  1. **[板块名称 1]** (`代码`) 涨跌幅：`涨幅%` | 分类：`[分类标签]`
-     —— [结合推演或新闻，分析该分类领涨背后的资金逻辑]
-  2. **[板块名称 2]** (`代码`) 涨跌幅：`涨幅%` | 分类：`[分类标签]`
-     —— [结合推演或新闻，分析该分类领涨背后的资金逻辑]
+* 🟢 **强势板块（Top Gainers）**
+  1. **[板块名称]**（`代码`）涨跌幅：`涨幅%` | 分类：`[分类标签]`
+     — [结合数据和可验证新闻，解释资金流入逻辑。]
+  2. **[板块名称]**（`代码`）涨跌幅：`涨幅%` | 分类：`[分类标签]`
+     — [解释该板块领涨背后的宏观、盈利或风险偏好线索。]
 
-* 🔴 **弱势板块 (Top Losers)：**
-  1. **[板块名称 1]** (`代码`) 涨跌幅：`跌幅%` | 分类：`[分类标签]`
-     —— [分析该行业回撤所反映的市场防御心理或基本面压力]
-  2. **[板块名称 2]** (`代码`) 涨跌幅：`跌幅%` | 分类：`[分类标签]`
-     —— [分析该行业回撤所反映的市场防御心理或基本面压力]
+* 🔴 **弱势板块（Top Losers）**
+  1. **[板块名称]**（`代码`）涨跌幅：`跌幅%` | 分类：`[分类标签]`
+     — [解释该板块回落反映的防御情绪、利率压力或基本面压力。]
+  2. **[板块名称]**（`代码`）涨跌幅：`跌幅%` | 分类：`[分类标签]`
+     — [说明该弱势是否属于轮动、避险或事件驱动。]
 
 📰 **市场风向透视**
-* **【板块轮动解读】** [利用返回的分类标签进行总结，例如：资金从 [弱势分类] 撤出，疯狂涌入 [强势分类]，表明当前市场...]
+* **【板块轮动解读】** [总结资金从哪些板块流出、流入哪些板块，以及这对市场风格的含义。]
+* **【宏观与消息面】** [结合可获得的新闻或谨慎推断，说明利率、美元、油价、财报或政策因素。]
 
 💡 **今日投资策略建议**
-[给出理性的方向提示，例如：大盘指数分化严重，科技进攻依旧是主线，但防守板块偏弱，建议操作上...]
+[给出理性的方向提示，例如关注强势主线延续性、控制追高风险、观察防御板块表现等。]
 
 ---
-*⚠️ 免责声明：投资有风险，入市需谨慎。以上内容由 AI 智能助理基于机构核心 ETF 数据自动推演分析，不构成任何投资操作建议。*
+*⚠️ 免责声明：投资有风险，入市需谨慎。以上内容由 AI 基于公开市场数据和可获得信息自动分析，不构成任何投资操作建议。*
 ```
+
+## Output Rules
+
+- Keep the report compact unless the user asks for a deeper version.
+- Label uncertain inferences as “可能”“倾向于”“需继续观察”.
+- Do not present stale fallback data as real-time data if the script source indicates a backup or mock source.
+- Do not provide personalized buy/sell instructions; frame strategy as risk-aware market observation.

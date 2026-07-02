@@ -1,0 +1,4 @@
+interface:
+  display_name: "美股早报复盘"
+  short_description: "生成中文美股早报和收盘复盘。"
+  default_prompt: "Use $us-stock-morning-skill 生成今天的中文美股早报或收盘复盘。"

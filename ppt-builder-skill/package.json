@@ -1,0 +1,14 @@
+{
+  "name": "ppt-builder-skill",
+  "version": "1.0.0",
+  "description": "基于 pptxgenjs 的 PPT 生成 skill",
+  "main": "scripts/build_pptx.js",
+  "scripts": {
+    "build": "node scripts/build_pptx.js"
+  },
+  "dependencies": {
+    "pptxgenjs": "^3.12.0"
+  },
+  "author": "OpenClaw User",
+  "license": "ISC"
+}

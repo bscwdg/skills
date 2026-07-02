@@ -1,0 +1,4 @@
+interface:
+  display_name: "PPT 生成器"
+  short_description: "从主题生成原生 .pptx 演示文稿。"
+  default_prompt: "Use $ppt-builder-skill 根据一个主题制作 PowerPoint 演示文稿。"
