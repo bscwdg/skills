@@ -7,3 +7,7 @@ npm-debug.log*
 # 生成的产物
 *.pptx
 umi-feiyu-pack.zip
+
+# Python 运行缓存（umi-feiyu-pack 四脚本）
+__pycache__/
+*.pyc
