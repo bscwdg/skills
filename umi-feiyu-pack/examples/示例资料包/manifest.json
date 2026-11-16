@@ -1,0 +1,12 @@
+{
+  "schema": "umi-character-pack/1",
+  "name": "示例·小鱼资料包",
+  "createdAt": "2026-11-16T12:48:41+08:00",
+  "targets": [
+    "persona",
+    "knowledge",
+    "proactive",
+    "memory"
+  ],
+  "source": "umi-feiyu-pack 合成示例（人物与情节均为虚构，不含真实个人信息）"
+}

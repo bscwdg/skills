@@ -13,6 +13,7 @@
 | `us-stock-morning-skill` | `us-stock-morning-skill/` | Codex、OpenClaw 或其他可运行脚本并生成报告的智能体 | 生成中文美股开盘前早报或收盘后复盘。基于三大指数、行业/主题 ETF 强弱、宏观与消息面背景，输出专业、简洁的市场简报。 |
 | `a-share-market-review-skill` | `a-share-market-review-skill/` | Codex、OpenClaw 或其他可运行脚本并生成报告的智能体 | 生成中文 A 股午间复盘和收盘复盘。基于沪深主要指数、行业/题材强弱、涨跌家数和市场情绪，输出午后观察或明日策略观察。 |
 | `ppt-builder-skill` | `ppt-builder-skill/` | Codex、OpenClaw 或其他可运行 Node 脚本的智能体 | 从主题生成原生 `.pptx` 演示文稿。先产出大纲供确认，再按 JSON spec 调用脚本渲染幻灯片，内置 `default` / `dark` / `corporate` 三套预设主题。 |
+| `umi-feiyu-pack` | `umi-feiyu-pack/` | Codex、OpenClaw 或其他可运行 Python 脚本的智能体 | 把微信/QQ 聊天记录、Word(.docx)、PDF、txt/md/HTML 整理成 Umi Claw「大肥鱼」可一键导入的资料包（人格 / 知识 / 主动消息 / 记忆）。内置提取、生成、校验、打 zip 四个脚本。 |
 
 ## `codex-skill-builder`
 
@@ -140,6 +141,39 @@ node scripts/build_pptx.js spec.json -o output.pptx
 
 `spec.json` 的完整 schema、布局字段与端到端示例见 `ppt-builder-skill/references/slide-spec.md`。
 
+## `umi-feiyu-pack`
+
+该技能把本地资料整理成 Umi Claw（大肥鱼）资料包 `umi-character-pack/1`，适合以下请求：
+
+- “把这些微信聊天记录做成大肥鱼的人格和记忆”
+- “把这份 Word 设定导入大肥鱼的世界书/角色卡”
+- “给大肥鱼生成一些主动消息话题和台词”
+- “校验/打包这个大肥鱼资料包”
+
+工作流程：
+
+1. 把聊天记录导出、Word、PDF、txt/md/HTML 放进输入目录。
+2. `python scripts/extract_sources.py <输入目录> -o <工作目录>`：提取 `sources/*.md`、`messages.jsonl`（`ts/speaker/text`）、`stats.json`。
+3. 按 `references/conversion-guide.md` 提炼，按 `references/pack-format.md` 写 `pack-plan.json`。
+4. `python scripts/build_pack.py <pack-plan.json> -o <资料包目录>`：生成资料包（自动补 AGENTS.md 边界硬段、文件名消毒、去重、上限校验、默认脱敏手机号/身份证/地址等，检测到密钥/密码直接失败）。
+5. `python scripts/validate_pack.py <资料包目录|zip>`：逐项校验契约，退出码 1 表示不合格。
+6. 可选：`python scripts/pack_to_zip.py <资料包目录>` 打成资料包 zip。
+
+导入：
+
+- 技能本身：在 Umi Claw「技能」页 →「导入技能 zip」选择 `umi-feiyu-pack.zip`（zip 内顶层目录为 `umi-feiyu-pack/`）；或解压到 `<数据目录>/config/.openclaw/skills/`。
+- 资料包：在「大肥鱼 → 资料包」卡用「导入资料包（文件夹）/（zip）」一键导入人格/知识/主动消息/记忆。
+
+示例（合成内容，无真实隐私）：
+
+```bash
+python umi-feiyu-pack/scripts/extract_sources.py umi-feiyu-pack/examples/sources -o <工作目录>/提取结果
+python umi-feiyu-pack/scripts/build_pack.py umi-feiyu-pack/examples/pack-plan.json -o umi-feiyu-pack/examples/示例资料包 --force
+python umi-feiyu-pack/scripts/validate_pack.py umi-feiyu-pack/examples/示例资料包
+```
+
+> zip 产物：`umi-feiyu-pack.zip`（技能页导入用，≤10MB）。资料包 zip 是另一种产物，用 `pack_to_zip.py` 生成，不要混淆。
+
 ## 目录结构约定
 
 ```text
@@ -168,4 +202,5 @@ python codex-skill-builder/scripts/inspect_skill.py stock-research-report
 python codex-skill-builder/scripts/inspect_skill.py us-stock-morning-skill
 python codex-skill-builder/scripts/inspect_skill.py a-share-market-review-skill
 python codex-skill-builder/scripts/inspect_skill.py ppt-builder-skill
+python codex-skill-builder/scripts/inspect_skill.py umi-feiyu-pack
 ```
