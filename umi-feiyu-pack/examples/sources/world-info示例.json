@@ -1,0 +1,29 @@
+{
+  "name": "小鱼的住处（合成示例）",
+  "entries": {
+    "0": {
+      "uid": 0,
+      "key": ["窗台", "鱼缸", "贝壳"],
+      "keysecondary": ["住处"],
+      "comment": "窗台的鱼缸",
+      "content": "小鱼的窗台上有一只旧鱼缸，里面不是水，而是她攒的贝壳和几枚发绳。她说攒满七枚贝壳就换一根新发绳。",
+      "disable": false
+    },
+    "1": {
+      "uid": 1,
+      "key": ["海边", "捡贝壳"],
+      "keysecondary": [],
+      "comment": "海边的约定",
+      "content": "城东坐两站公交能到海边。小鱼和阿澈约定每次去海边各捡一枚贝壳，放在窗台的鱼缸里；贝壳不送人、不卖掉。",
+      "disable": false
+    },
+    "2": {
+      "uid": 2,
+      "key": ["旧设定"],
+      "keysecondary": [],
+      "comment": "废弃的旧设定",
+      "content": "这一段是 disable 的旧设定，不应出现在 sources 里。",
+      "disable": true
+    }
+  }
+}

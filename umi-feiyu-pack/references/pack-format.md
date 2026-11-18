@@ -28,6 +28,8 @@
 | 话题卡 | 200 张 |
 | 台词组 | 50 组（每组 ≤30 句、每句 ≤300 字） |
 | 关系笔记 | 400 篇 |
+| 生活卡（可选） | 200 张 |
+| 停用清单（可选） | 每类 2000 条 id / 5000 条单句 |
 | 单文件 | 512 KB |
 | 人格文件 | 单文件 512 KB / 总计 2 MB |
 | 字符 | 任何文本文件禁止 NUL（`\x00`） |
@@ -180,6 +182,53 @@
 - 每组 ≤30 句，每句 ≤300 字；空组丢弃；合并导入时组内去重。
 - 组名与内置一致（如 `greeting` / `night` / `praise` / `sulk`）时，用户的句子追加在内置句之后，内置句保留。
 
+### 5.1 `proactive/life-cards.json`（可选，`fish-life-cards/1`）
+
+应用 5.1 起识别；旧版本会忽略，不影响主包。
+
+```json
+{
+  "schema": "fish-life-cards/1",
+  "version": "1.0.0",
+  "cards": [
+    {
+      "id": "life-rice",
+      "slots": ["morning", "noon"],
+      "minStage": 0,
+      "activity": "吃了两大碗白饭",
+      "mood": "满足",
+      "goal": "中午再添一碗",
+      "hook": "本鱼今天吃了很多，真的很多",
+      "weight": 3
+    }
+  ]
+}
+```
+
+- `id` 非空且同包内唯一；`activity` 必填（否则应用丢弃）。
+- `slots` 可用 `morning/noon/afternoon/evening/night`；`minStage` 0–4；`weight` 1–10。
+- 应用侧同名 id 覆盖内置/用户生活卡；最多 200 张。
+
+### 5.2 `proactive/overrides.json`（可选，`fish-content-overrides/1`）
+
+用于保存「用户停用了哪些内置话题/台词/生活卡」。应用导出归档时会自动写；skill 生成的新包可以不写。
+
+```json
+{
+  "schema": "fish-content-overrides/1",
+  "version": "1.0.0",
+  "kinds": {
+    "topics": { "disabledIds": ["topic-food"] },
+    "lines": { "disabledGroups": [], "disabledLines": [{ "group": "night", "line": "（把灯调暗）睡吧。" }] },
+    "lifeCards": { "disabledIds": [] }
+  }
+}
+```
+
+- 只在应用侧生效，用于换机/恢复后不复活被停用的内置项；缺失 = 不改变当前停用状态。
+- **有该文件时应用会整体覆盖本机停用清单**（应用导出的包总是全量，因此这是恢复语义）；手写部分清单会清掉未列出的已停用项。
+- 每类最多 2000 条 id / 5000 条单句；应用会消毒/去重。
+
 ---
 
 ## 6. `knowledge/`
@@ -197,7 +246,7 @@
 - 单篇 ≤512KB，总计 ≤300 篇（应用一次导入最多写 300 篇，没有分批）；整包条目 ≤2000、`manifest.json` ≤256KB、其他单个 JSON ≤4MB。
 - 应用侧同名笔记不覆盖，自动加 `-2` 序号。
 
-> **约定放哪（重要）**：`knowledge/关系/约定/X.md` 与 `memory/relations/约定/X.md` 在应用侧都会落到同一个 Obsidian 目录 `大肥鱼/关系/约定/`。同一段约定**不要两处都写**：要成篇、可检索的设定放 `knowledge/关系/约定/`；要单条可编辑、进记忆列表的放 `memory/relations/约定/`。如果两处同名，应用会认为知识笔记已写过该文件，**跳过关系那条**（同包同名以知识为准）。
+> **约定放哪（重要）**：`knowledge/关系/约定/X.md` 与 `memory/relations/约定/X.md` 在应用侧都会落到同一个 Obsidian 目录 `大肥鱼/关系/约定/`。同一段约定**不要两处都写**：要成篇、可检索的设定放 `knowledge/关系/约定/`；要单条可编辑、进记忆列表的放 `memory/relations/约定/`。若两处同名：**内容完全相同**时应用按关系记忆原文落一次（无 frontmatter/tags）、跳过知识那条；**同名但内容不同**时才以知识为准、跳过关系那条。
 
 ---
 
@@ -210,7 +259,7 @@
 | `memory/diaries/2024-03-01.md` | workspace `memory/2024-03-01.md` | 日记，文件名必须是真实 `YYYY-MM-DD` |
 
 - 关系笔记：文件名遵守知识文件名同样的消毒规则；应用侧同名不覆盖（加序号）。
-- **不要和知识重复**：`memory/relations/约定/X.md` 与 `knowledge/关系/约定/X.md` 会落到同一目录；同包同名时应用以知识那条为准、跳过关系那条。同一段约定只写一处（成篇/检索 → knowledge；单条可编辑记忆 → memory/relations）。
+- **不要和知识重复**：`memory/relations/约定/X.md` 与 `knowledge/关系/约定/X.md` 会落到同一目录；同包同名**同文**时应用按关系记忆原文落一次、跳过知识；同名**不同文**时以知识为准、跳过关系。同一段约定只写一处（成篇/检索 → knowledge；单条可编辑记忆 → memory/relations）。
 - **关系笔记建议 ≤64KB**：应用记忆列表读取上限是 64KB，更大的文件不会被展示/召回（契约允许到 512KB，但那只是文件系统上限）。
 - 日记：日期必须真实（拒绝 `2024-02-30`）；应用侧编辑上限 20000 字（超出会警告）；同日重复由 `build_pack.py` 合并成一篇。
 

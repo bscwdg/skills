@@ -296,6 +296,54 @@ def check_lines(report: Report, texts: dict[str, str]) -> dict[str, object] | No
     return {"groups": len(groups), "lines": total_lines}
 
 
+def check_extras(report: Report, texts: dict[str, str]) -> dict[str, object] | None:
+    """可选扩展：生活卡与停用清单（应用 5.1 起识别；旧版本会忽略，不影响主包）。"""
+    result: dict[str, object] = {}
+    life = _load_json(report, texts, "proactive/life-cards.json")
+    if life is not None:
+        if not isinstance(life, dict):
+            report.error("proactive/life-cards.json: 顶层必须是对象")
+        else:
+            if life.get("schema") != "fish-life-cards/1":
+                report.error(
+                    f"proactive/life-cards.json: schema 必须是 'fish-life-cards/1'，实际 {life.get('schema')!r}"
+                )
+            cards = life.get("cards")
+            if not isinstance(cards, list) or not cards:
+                report.error("proactive/life-cards.json: cards 必须是非空数组")
+            else:
+                if len(cards) > 200:
+                    report.error(f"生活卡 {len(cards)} 张，超过 200 张上限")
+                seen_ids: set[str] = set()
+                for index, card in enumerate(cards):
+                    where = f"cards[{index}]"
+                    if not isinstance(card, dict):
+                        report.error(f"{where}: 必须是对象")
+                        continue
+                    card_id = card.get("id")
+                    activity = card.get("activity")
+                    if not isinstance(card_id, str) or not card_id.strip():
+                        report.error(f"{where}.id 必须是非空字符串")
+                    elif card_id in seen_ids:
+                        report.error(f"{where}.id 重复：{card_id}")
+                    else:
+                        seen_ids.add(card_id)
+                    if not isinstance(activity, str) or not activity.strip():
+                        report.error(f"{where}.activity 必须是非空字符串（应用侧会丢弃空卡）")
+                result["lifeCards"] = len(cards)
+    overrides = _load_json(report, texts, "proactive/overrides.json")
+    if overrides is not None:
+        if not isinstance(overrides, dict):
+            report.error("proactive/overrides.json: 顶层必须是对象")
+        else:
+            kinds = overrides.get("kinds")
+            if kinds is not None and not isinstance(kinds, dict):
+                report.error("proactive/overrides.json: kinds 必须是对象")
+            else:
+                result["overrides"] = True
+    return result or None
+
+
 def _check_md_file(report: Report, files: dict[str, bytes], texts: dict[str, str], rel: str, label: str) -> bool:
     data = files[rel]
     size = len(data)
@@ -459,8 +507,13 @@ def validate(pack_path: Path, strict_privacy: bool = False) -> Report:
             continue
         report.warn(f"未识别的文件（应用侧会忽略）：{rel}")
     for rel in sorted(files):
-        if rel.startswith("proactive/") and rel not in ("proactive/topics.json", "proactive/lines.json"):
-            report.warn(f"{rel}: proactive/ 下只识别 topics.json 与 lines.json")
+        if rel.startswith("proactive/") and rel not in (
+            "proactive/topics.json",
+            "proactive/lines.json",
+            "proactive/life-cards.json",
+            "proactive/overrides.json",
+        ):
+            report.warn(f"{rel}: proactive/ 下只识别 topics.json / lines.json / life-cards.json / overrides.json")
 
     total_bytes = sum(len(data) for data in files.values())
     entry_total = _entry_total(pack_path, files)
@@ -504,6 +557,9 @@ def validate(pack_path: Path, strict_privacy: bool = False) -> Report:
     lines_stats = check_lines(report, texts)
     if lines_stats:
         stats["lines"] = lines_stats
+    extra_stats = check_extras(report, texts)
+    if extra_stats:
+        stats["extras"] = extra_stats
     knowledge_stats = check_knowledge(report, files, texts)
     if knowledge_stats:
         stats["knowledge"] = knowledge_stats
@@ -517,7 +573,10 @@ def validate(pack_path: Path, strict_privacy: bool = False) -> Report:
         present.add("persona")
     if knowledge_stats:
         present.add("knowledge")
-    if topics_stats or lines_stats:
+    extras_present = isinstance(stats.get("extras"), dict)
+    if topics_stats or lines_stats or (extras_present and stats["extras"].get("lifeCards")) or (
+        extras_present and stats["extras"].get("overrides")
+    ):
         present.add("proactive")
     if memory_stats:
         present.add("memory")

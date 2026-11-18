@@ -1,13 +1,13 @@
 ---
 name: umi-feiyu-pack
-description: 把微信/QQ 聊天记录、Word(.docx)、PDF、txt/md/HTML 文档整理成 Umi Claw「大肥鱼」可一键导入的资料包（人格 / 知识 / 主动消息 / 记忆）。用户想给大肥鱼喂人设、把聊天记录变成她的人格与记忆、把设定文档导入世界书/角色卡、生成 fish-topics/1 话题卡或 fish-lines/1 台词库、或要求「生成/校验大肥鱼资料包」时使用；也用于把结果打成 umi-character-pack/1 目录或 zip 交给应用侧导入。
+description: 把微信/QQ 聊天记录、Word(.docx)、PDF、txt/md/HTML 文档，以及其他 AI 角色应用导出的角色卡与世界书（SillyTavern/Chub 的 Character Card V1/V2/V3 JSON、PNG 内嵌 chara/ccv3 角色卡、World Info/Lorebook JSON）整理成 Umi Claw「大肥鱼」可一键导入的资料包（人格 / 知识 / 主动消息 / 记忆）。用户想给大肥鱼喂人设、把聊天记录变成她的人格与记忆、把设定文档导入世界书/角色卡、导入现成角色卡/世界书、生成 fish-topics/1 话题卡或 fish-lines/1 台词库、或要求「生成/校验大肥鱼资料包」时使用；也用于把结果打成 umi-character-pack/1 目录或 zip 交给应用侧导入。
 ---
 
 # 大肥鱼资料包生成器
 
 把一批本地资料整理成 Umi Claw「大肥鱼」的资料包（格式契约 `umi-character-pack/1`）。
 
-- **输入**：微信/QQ 聊天记录导出、Word(.docx)、PDF、txt/md/HTML。
+- **输入**：微信/QQ 聊天记录导出、Word(.docx)、PDF、txt/md/HTML，以及 SillyTavern / Chub 等应用的 Character Card JSON（V1/V2/V3）、PNG 内嵌角色卡、World Info / Lorebook JSON。
 - **输出**：一个目录（可再打 zip），包含人格文件、知识笔记、主动消息话题/台词、关系与日记；在 Umi Claw「大肥鱼 → 资料包」里一键导入。
 - **全程本地处理**：脚本只读输入、只写你指定的工作目录，不联网、不上传。
 
@@ -30,10 +30,12 @@ description: 把微信/QQ 聊天记录、Word(.docx)、PDF、txt/md/HTML 文档�
 
 ### 1) 收集输入
 
-把聊天记录导出、Word、PDF、文本放进 `<工作目录>/输入/`。
+把聊天记录导出、Word、PDF、文本，以及现成的角色卡/世界书 JSON、PNG 角色卡放进 `<工作目录>/输入/`。
 
-- 支持：`.txt` `.md` `.html` `.docx` `.pdf`
-- 不支持：旧版 `.doc`（先另存为 `.docx`/`.txt`）、图片里的文字（先用图片理解/OCR 转成文字）。
+- 支持：`.txt` `.md` `.html` `.docx` `.pdf` `.json` `.png`
+- `.json` 会自动辨识三种情况：**Character Card V2/V3**（`{spec, spec_version, data}`）、**V1 扁平卡**（顶层 `name/description/personality/...`）、**World Info / Lorebook**（顶层 `entries` 或 `world_info`）。
+- `.png` 只读取内嵌的 `chara` / `ccv3` 文本块（Character Card 规范）；普通图片没有这些块，会警告跳过。
+- 不支持：旧版 `.doc`（先另存为 `.docx`/`.txt`）、PNG 以外的普通图片里的文字（先用图片理解/OCR 转成文字）、非角色卡/世界书结构的 JSON（会原样保留并警告，不会误当角色卡）。
 
 ### 2) 提取
 
@@ -43,13 +45,20 @@ python scripts/extract_sources.py "<工作目录>/输入" -o "<工作目录>/提
 
 产出：
 
-- `sources/*.md`：每份输入的纯文本（原样保留，供你阅读提炼）
+- `sources/*.md`：每份输入的纯文本；角色卡会按「名字/描述/性格/场景/开场/示例对话/创作者备注/系统提示词/备选开场白/其他字段」分段，世界书每条一个二级标题（`comment` 或关键词命名），正文保留 `content`。未知/非法 JSON 原样保留。
 - `messages.jsonl`：聊天消息，字段 `ts / speaker / text`
-- `stats.json`：每个文件的字符数、是否识别为聊天、消息数、警告
+- `stats.json`：每个文件的字符数、是否识别为聊天、消息数、警告；`files[].kind` 标记 `character-card` / `world-info` / `json-raw`，`files[].format` 标记具体格式（如 `character-card-v2`、`character-card-v3`、`character-card-v1`、`world-info`）。
 
 能识别的聊天格式（同一文件可混用）：`2024-03-01 21:12:00 昵称`、`昵称(QQ号)`、`2024-03-01 21:12:00 昵称: 内容`、`[2024-03-01 21:12:00] 昵称: 内容`、`昵称 2024-03-01 21:12`、只有日期的分组行（后接 `昵称: 内容`）。
 
-退出码 1 = 有文件没提取成功（如缺 PDF 库），按输出里的替代方案补齐后再继续。
+JSON / PNG 的识别边界：
+
+- 角色卡：V2/V3 靠 `spec`（`chara_card_v2` / `chara_card_v3`）或 `data` 里的 `name` + 角色卡字段；V1 必须是「`name` + 至少两个角色卡字段」的扁平结构，普通配置 JSON 不会被误判。
+- 世界书：顶层 `entries`（对象或数组）、`world_info.entries`、`world_info` 直接映射都支持；条目必须有 `content`，或「关键词 + comment」；`disable:true` / `enabled:false` 的条目跳过。
+- PNG：带 `chara` 优先、没有则用 `ccv3`；内嵌 base64 JSON 损坏算文件失败，普通 PNG（无这两个块）只在警告里跳过。
+- 文件扩展名大小写不敏感；JSON 解码沿用 `utf-8-sig → GB18030 → UTF-16` 兜底。
+
+退出码 1 = 有文件没提取成功（如缺 PDF 库、PNG 内嵌角色卡损坏、编码无法识别），按输出里的替代方案补齐后再继续；未知 JSON 与普通 PNG 只给警告，不算失败。
 
 ### 3) 阅读与提炼
 
@@ -58,6 +67,9 @@ python scripts/extract_sources.py "<工作目录>/输入" -o "<工作目录>/提
 | 提炼结果 | 放到哪里 |
 | --- | --- |
 | 她的说话方式、性格、在意的东西 | `persona` 的 `SOUL.md` / `IDENTITY.md` |
+| 角色卡的 `description` / `personality` / `scenario` | `persona` 的 `SOUL.md` / `IDENTITY.md` + `knowledge/角色卡/` |
+| 角色卡的开场白、备选开场白、示例对话 | `proactive/lines.json` 的台词、`proactive/topics.json` 的风格（先改写 `{{char}}`/`{{user}}`） |
+| 世界书条目的 `content` / `comment` | `knowledge/世界书/` |
 | 称呼规则、运行规则 | `persona` 的 `AGENTS.md` |
 | 关于用户（称呼、习惯、雷区） | `persona` 的 `USER.md` |
 | 世界观、地点、物件、关系史 | `knowledge/世界书/` |
@@ -68,7 +80,9 @@ python scripts/extract_sources.py "<工作目录>/输入" -o "<工作目录>/提
 | 日常话题 / 台词 | `proactive/topics.json` / `proactive/lines.json` |
 | 具体某天发生的事 | `memory/diaries/YYYY-MM-DD.md` |
 
-> **同一段约定不要两处都写**：`knowledge/关系/约定/X.md` 与 `memory/relations/约定/X.md` 在应用侧都会落到 `大肥鱼/关系/约定/`；同包同名时应用以知识笔记为准、**跳过关系那条**。要成篇/可检索放 knowledge，要单条可编辑记忆放 memory，二选一。
+角色卡/世界书的逐字段映射、宏改写与版权/隐私注意，见 `references/conversion-guide.md` 的「从角色卡/世界书 JSON 提炼」一节。
+
+> **同一段约定不要两处都写**：`knowledge/关系/约定/X.md` 与 `memory/relations/约定/X.md` 在应用侧都会落到 `大肥鱼/关系/约定/`；同包同名**同文**时应用按关系记忆原文落一次（无 frontmatter/tags）、跳过知识那条；同名**不同文**时才以知识为准、跳过关系那条。要成篇/可检索放 knowledge，要单条可编辑记忆放 memory，二选一。
 
 ### 4) 写 pack-plan.json
 
@@ -115,13 +129,18 @@ python scripts/validate_pack.py "<工作目录>/资料包"
 - 人格文件里没有 `{{address}}` 之类变量占位符（应用导入不会替换变量）。
 - `AGENTS.md` 含边界硬段（不假装人类 / 危机转介 / 不卖惨不制造独占）。
 - 敏感信息已脱敏，或用户明确要求保留且确认是虚构内容。
-- 上限：整包 ≤32MB、条目总数 ≤2000、`manifest.json` ≤256KB（专属）、其他单个 JSON ≤4MB、知识 ≤300 篇、话题 ≤200 张、台词组 ≤50 组、关系 ≤400 篇、单文件 ≤512KB。
+- 从角色卡/世界书提炼时，`{{char}}`/`{{user}}` 宏已改写成真实称呼，`disable:true` 条目没有导入，`creator_notes`/`creator`/`source` 等作者元数据没有当成人设。
+- 上限：整包 ≤32MB、条目总数 ≤2000、`manifest.json` ≤256KB（专属）、其他单个 JSON ≤4MB、知识 ≤300 篇、话题 ≤200 张、台词组 ≤50 组、关系 ≤400 篇、生活卡 ≤200 张、单文件 ≤512KB。
 
 ## 已知限制
 
 - **PDF**：依赖可选库 `pypdf`/`pdfminer.six`；未安装时报错并给替代方案（用 agent 的 PDF 阅读工具转文本，或用 office 技能转 docx）。扫描件需要 OCR。
 - **.docx**：用 zipfile + XML 解析，只提取正文段落文字；图片、文本框、批注、页眉页脚不提取。
-- **旧版 .doc / 图片里的字**不支持，先转换。
+- **旧版 .doc / PNG 以外的图片里的字**不支持，先转换。
+- **角色卡 JSON**：只识别 Character Card V1 扁平结构、V2/V3 的 `{spec, spec_version, data}`（含 `chara_card_v2` / `chara_card_v3`）。字段按原文写入 Markdown，不解析或替换 `{{char}}`/`{{user}}` 宏；`extensions`、`assets` 等未列入常用段的字段会以 JSON 形式保留在「其他字段」，但不会自动转换成资料包字段，需要人工按 `references/conversion-guide.md` 提炼。其他形状的 JSON 不会猜成角色卡：原样保留到 `sources/` 并警告。
+- **世界书 JSON**：支持 `entries`（对象/数组）、`world_info.entries`、`world_info` 直接映射。只把 `comment` / `key` / `keysecondary` / `content` 转成 Markdown；`order`、`probability`、`position` 等触发/排序元数据不进入 `sources/`（提炼知识笔记用不到）。`disable:true` / `enabled:false` 的条目跳过并给警告。
+- **PNG 角色卡**：用标准库 `struct`/`zlib`/`base64` 读 `tEXt`/`zTXt`/`iTXt` 里的 `chara`（优先）或 `ccv3`，不依赖 Pillow，也不提取图像内容。普通 PNG（没有这两个块）会警告跳过、不算失败；内嵌 base64/JSON 损坏或 PNG 结构损坏会以退出码 1 报错。只支持 PNG，JPG/WebP 等格式不读。
+- **JSON 大小/编码**：单文件上限 64MB；编码沿用 `utf-8-sig → GB18030 → UTF-16` 兜底，非这几种编码会报错并提示另存为 UTF-8。
 - **聊天格式**千差万别：无法识别的行会留在 `sources/*.md` 原文里，`messages.jsonl` 可能不全，需人工核对 `stats.json`。
 - **脱敏是启发式**：地址、密码、真实姓名无法 100% 识别，人工检查是必须的。
 - **应用侧会截断**：话题 `details`/`hooks` 各取 10 条、每条 300 字；每组台词取 30 句、每句 300 字；超限内容不生效。
@@ -130,8 +149,8 @@ python scripts/validate_pack.py "<工作目录>/资料包"
 ## 资源
 
 - `references/pack-format.md`：完整字段契约 + 最小合法示例 + 与应用解析器的对齐点。**写 pack-plan 前必读。**
-- `references/conversion-guide.md`：聊天记录 → 人格/世界书/角色卡/约定/话题/台词的抽取启发式、脱敏清单、质量问题清单。**提炼前必读。**
-- `examples/`：合成示例（`sources/` 输入、`pack-plan.json`、`示例资料包/` 产物），可照抄结构。
+- `references/conversion-guide.md`：聊天记录 → 人格/世界书/角色卡/约定/话题/台词的抽取启发式、角色卡/世界书 JSON 的逐字段映射、脱敏清单、质量问题清单。**提炼前必读。**
+- `examples/`：合成示例（`sources/` 输入、`pack-plan.json`、`示例资料包/` 产物）。其中 `sources/角色卡V2示例.json`、`sources/world-info示例.json`、`sources/角色卡示例.png` 演示角色卡/世界书输入，可照抄结构。
 
 复现示例（在本 skill 目录下运行；`提取结果/` 是本地生成物，不随仓库提交）：
 

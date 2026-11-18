@@ -70,7 +70,7 @@
 ### USER.md（关于用户）
 
 称呼、习惯、在意的事、不喜欢的点、重要日期。
-只写**资料里出现过的**；不要猜真实姓名、公司、住址。敏感信息按第 6 节脱敏。
+只写**资料里出现过的**；不要猜真实姓名、公司、住址。敏感信息按第 7 节脱敏。
 
 **人格文件里不要写 `{{address}}` 这类占位符**：应用导入人格包时不会替换变量，字面量会原样留在文件里。
 
@@ -87,7 +87,9 @@
 - 一篇一个主题，标题就是文件名（`小鱼的住处.md`、`周末不熬夜.md`）。
 - 正文 200–2000 字；用短段落 + 列表；**不要加 YAML frontmatter**（应用会加自己的）。
 - 同一主题不要拆成多篇同义笔记；重复内容 `build_pack.py` 会去重并警告。
-- **「约定」二选一**：`knowledge/关系/约定/X.md`（成篇、可检索的世界/关系设定）与 `memory/relations/约定/X.md`（单条、进记忆列表、可单独编辑）在应用侧会落到同一个 `大肥鱼/关系/约定/` 目录。**同一段约定不要两处都写**——同包同名时应用以知识笔记为准，会跳过关系那条。要么都放 knowledge，要么都放 memory；确需两版时用不同文件名并注明「成篇版 / 单条版」。
+- **「约定」二选一**：`knowledge/关系/约定/X.md`（成篇、可检索的世界/关系设定）与 `memory/relations/约定/X.md`（单条、进记忆列表、可单独编辑）在应用侧会落到同一个 `大肥鱼/关系/约定/` 目录。**同一段约定不要两处都写**——同包同名**同文**时应用按关系记忆原文落一次（无 frontmatter/tags）、跳过知识那条；同名**不同文**时才以知识为准、跳过关系那条。要么都放 knowledge，要么都放 memory；确需两版时用不同文件名并注明「成篇版 / 单条版」。
+
+> 角色卡 JSON / 世界书 JSON / PNG 角色卡怎么落到上表，见第 9 节。
 
 ## 5. 记忆：约定 / 大事记 / 日记
 
@@ -154,13 +156,59 @@
 - [ ] 没有直接使用他人作品的受版权保护角色/台词（原创或已获授权）。
 - [ ] `validate_pack.py` 退出码 0，警告已逐条确认；条目总数 ≤2000、`manifest.json` ≤256KB、其他单个 JSON ≤4MB。
 
-## 9. 完整示例（可直接对照）
+## 9. 从角色卡/世界书 JSON 提炼（SillyTavern / Chub / PNG 角色卡）
+
+`extract_sources.py` 会把这些输入转成可读的 `sources/*.md`：
+
+- **Character Card V2/V3**（`{spec, spec_version, data}`）和 **V1 扁平卡** → 按「名字 / 描述 / 性格 / 场景 / 开场白 / 示例对话 / 创作者备注 / 系统提示词 / 历史后置指令 / 备选开场白 / 其他字段」分段；
+- **World Info / Lorebook**（`entries` / `world_info`）→ 每条一个二级标题（`comment` 或关键词），正文是 `content`；`disable:true` / `enabled:false` 的条目不会出现；
+- **PNG 内嵌角色卡**（`chara` / `ccv3`）→ 与 JSON 卡相同的 Markdown。
+
+先看 `stats.json` 的 `files[].kind` 定位：`character-card` / `world-info` / `json-raw`。`json-raw` 表示没认出目标结构，原文保留在 `sources/`，需要人工判断，**不要直接当角色卡提炼**。
+
+### 9.1 字段映射
+
+| 角色卡/世界书字段 | 建议去向 | 处理方式 |
+| --- | --- | --- |
+| `name` / `nickname` | `IDENTITY.md`、`knowledge/角色卡/<名字>.md` | 名字和称呼写清楚；不要照搬模板里的 `{{char}}` |
+| `description` / `personality` | `SOUL.md`（性格 / 说话方式）；必要细节进 `knowledge/角色卡/` | 抽成可执行规则，不要整段复制 |
+| `scenario` | `knowledge/世界书/` 或 `SOUL.md` 的场景规则 | 只留长期成立的世界设定 |
+| `first_mes` / `alternate_greetings` | `proactive/lines.json`（问候 / 开场）、`topics.json` | 挑短句，去掉 `{{char}}`/`{{user}}` 宏；不要把多条开场白原样堆进人格 |
+| `mes_example` | `SOUL.md` 的说话方式 + `lines.json` | 只抽语气、句长、动作习惯；示例对话本身不是资料包文件 |
+| `system_prompt` / `post_history_instructions` | `AGENTS.md`（可执行规则） | 只留「她怎么说话 / 怎么做事」有关的规则；通用的「你是 AI 助手」提示丢弃 |
+| `creator_notes` | 不直接导入 | 只作背景参考；其中可能含作者说明 / 版权信息，不要当人设 |
+| `extensions` / `assets` / 其他字段 | 一般不导入 | 如 `depth_prompt` 里有长期设定，人工挑出来改写进世界书 / AGENTS |
+| world info `comment` / `key` | 标题 / 关键词 | `sources/` 已转成小标题，可据此命名知识文件 |
+| world info `content` | `knowledge/世界书/<标题>.md` | 一条一个主题；多条同义条目合并，别拆成几十篇 |
+| world info `disable:true` | 不导入 | 脚本已跳过；不要从别处补回来 |
+| 角色卡附带的记忆 / 聊天导出 | `memory/relations/`、`memory/diaries/` | 按第 2 节聊天启发式提炼，不要整段贴 |
+
+### 9.2 改写要点
+
+- **宏必须先替换**：角色卡里的 `{{char}}` / `{{user}}` 是应用宏，大肥鱼资料包不会替换；写成实际名字或「她 / 你」。
+- **不要把整卡塞进人格**：`description` 常有 2–5KB，超过人格总量；只抽稳定特征，其余做知识笔记。
+- **世界书条目可能互相矛盾**：同一地点 / 时间线有多条时，以最新、最常出现的为准，合并成一篇，不要原样保留冲突。
+- **别导入作者元数据**：`creator`、`character_version`、`source`、`avatar`、`creator_notes` 多为发布信息，不是角色设定。
+- **版权与真人**：只使用你有权使用的角色卡 / 世界书；真实人物卡先化名并删掉可识别信息（见第 7 节）。
+- **角色卡自带的世界书**：如果 `extensions` 或单独文件里有 lorebook，仍按世界书条目处理；`disable:true` 的设定不要启用。
+- **越界设定不要带进来**：与 AGENTS.md 边界硬段冲突的内容（18+、真实伤害、独占控制）必须删掉或改写。
+
+### 9.3 快速检查
+
+- [ ] `sources/` 里角色卡 / 世界书文件已生成，`stats.json` 的 `kind` 与预期一致。
+- [ ] `{{char}}` / `{{user}}` 已全部替换。
+- [ ] 世界书 `disable:true` 的条目没有出现在资料包。
+- [ ] 没有把 `creator_notes` / `creator` / `source` 当成人设写进人格。
+- [ ] 角色卡 / 世界书里的真实隐私已按第 7 节处理。
+
+## 10. 完整示例（可直接对照）
 
 `examples/` 里有一份合成示例：
 
 1. `examples/sources/示例聊天.txt`：微信/QQ 混排格式的聊天记录（含 QQ 号后缀、只有日期的分组行）。
 2. `examples/sources/示例设定.docx`：Word 设定文档；`examples/sources/示例约定.txt`：约定草稿。
-3. `python scripts/extract_sources.py examples/sources -o examples/提取结果` 得到 `sources/*.md` + `messages.jsonl`。
-4. `examples/pack-plan.json`：按本指南提炼后的结构化输入（人格四槽位、3 篇知识、2 张话题、3 组台词、2 篇关系、2 天日记）。示例里「周末不熬夜」只写成篇版放 `knowledge/关系/约定/`，记忆里另写单条「报平安」——**刻意不让两处同名**，避免应用按同名跳过关系那条。
-5. `python scripts/build_pack.py examples/pack-plan.json -o examples/示例资料包 --force` 生成可导入资料包。
-6. `python scripts/validate_pack.py examples/示例资料包` 应输出 `[通过]`。
+3. `examples/sources/角色卡V2示例.json`：合法 Character Card V2；`examples/sources/world-info示例.json`：3 条世界书（其中 1 条 `disable:true` 会被跳过）；`examples/sources/角色卡示例.png`：标准库写出的 1×1 PNG，内嵌 `chara` base64 V2 卡。
+4. `python scripts/extract_sources.py examples/sources -o examples/提取结果` 得到 `sources/*.md` + `messages.jsonl` + `stats.json`（`stats.json` 里能看到 `kind: character-card` / `kind: world-info`）。
+5. `examples/pack-plan.json`：按本指南提炼后的结构化输入（人格四槽位、3 篇知识、2 张话题、3 组台词、2 篇关系、2 天日记）。示例里「周末不熬夜」只写成篇版放 `knowledge/关系/约定/`，记忆里另写单条「报平安」——**刻意不让两处同名**，避免应用按同名跳过关系那条。
+6. `python scripts/build_pack.py examples/pack-plan.json -o examples/示例资料包 --force` 生成可导入资料包。
+7. `python scripts/validate_pack.py examples/示例资料包` 应输出 `[通过]`。
